@@ -27,7 +27,7 @@
       },
       "orm": {
         "json_url": "/json",
-        "fortune_url": "/fortunes",
+        "fortune_url": "/fortunesorm",
         "plaintext_url": "/plaintext",
         "db_url": "/dborm",
         "query_url": "/queriesorm?queries=",

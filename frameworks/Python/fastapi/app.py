@@ -109,9 +109,9 @@ async def single_database_query():
 
 @app.get('/dborm')
 def single_database_query_orm(db: Session = Depends(get_db)):
-    wid = randint(1, 10000)
-    worlds = db.query(World.randomnumber).filter(World.id == wid).first()
-    return worlds
+    row_id = randint(1, 10000)
+    number = db.query(World.randomnumber).filter(World.id == row_id).one()
+    return UJSONResponse({'id': row_id, 'randomNumber': number[0]})
 
 
 @app.get('/queries')
@@ -128,6 +128,17 @@ async def multiple_database_queries(queries = None):
             worlds.append({'id': row_id, 'randomNumber': number})
 
     return UJSONResponse(worlds)
+
+
+@app.get('/queriesorm')
+def multiple_database_queries(queries=None, db: Session = Depends(get_db)):
+    num_queries = get_num_queries(queries)
+    row_ids = [randint(1, 10000) for _ in range(num_queries)]
+    worlds = []
+    for row_id in row_ids:
+        number = db.query(World.randomnumber).filter(World.id == row_id).one()
+        worlds.append({'id': row_id, 'randomNumber': number[0]})
+    return worlds
 
 
 @app.get('/fortunes')
@@ -159,3 +170,8 @@ async def database_updates(queries = None):
 @app.get('/plaintext')
 async def plaintext():
     return PlainTextResponse(b'Hello, world!')
+
+
+if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run('app:app', reload=True)

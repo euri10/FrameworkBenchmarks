@@ -2,9 +2,11 @@ import os
 import jinja2
 from fastapi import FastAPI, Depends
 from operator import attrgetter
+import psycopg2
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool
 from starlette.responses import HTMLResponse, UJSONResponse, PlainTextResponse
 from starlette.requests import Request
 from starlette.responses import Response
@@ -13,9 +15,18 @@ import sys
 
 _is_pypy = hasattr(sys, 'pypy_version_info')
 
+def get_conn():
+    return psycopg2.connect(
+        user='benchmarkdbuser',
+        password='benchmarkdbpass',
+        host='tfb-database',
+        port='5432',
+        database='hello_world')
 
-engine = create_engine('postgresql://benchmarkdbuser:benchmarkdbpass@tfb-database:5432/hello_world')
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+conn_pool = QueuePool(get_conn, pool_size=100, max_overflow=25, echo=False)
+engine = create_engine('postgresql://', pool=conn_pool)
+SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 db_session = SessionLocal()
 

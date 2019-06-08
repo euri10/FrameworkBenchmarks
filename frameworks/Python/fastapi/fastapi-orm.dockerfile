@@ -6,4 +6,4 @@ WORKDIR /fastapi
 
 RUN pip3 install -r /fastapi/requirements.txt
 
-CMD gunicorn app:app -c fastapi_conf.py
+CMD gunicorn apporm:app -c fastapi_conf.py

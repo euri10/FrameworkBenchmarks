@@ -10,7 +10,6 @@ from starlette.requests import Request
 from starlette.responses import Response
 from random import randint
 import sys
-from operator import itemgetter
 
 _is_pypy = hasattr(sys, 'pypy_version_info')
 
@@ -98,7 +97,7 @@ def multiple_database_queries_orm(queries=None, db: Session = Depends(get_db)):
 
 
 @app.get('/fortunesorm')
-async def fortunes(db: Session = Depends(get_db)):
+def fortunes(db: Session = Depends(get_db)):
     fortunes = list(db.query(Fortune).all())
     fortunes.append(Fortune(id=0, message="Additional fortune added at request time."))
     fortunes.sort(key=attrgetter('message'))

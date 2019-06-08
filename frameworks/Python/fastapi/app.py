@@ -131,7 +131,7 @@ async def multiple_database_queries(queries = None):
 
 
 @app.get('/queriesorm')
-def multiple_database_queries(queries=None, db: Session = Depends(get_db)):
+def multiple_database_queries_orm(queries=None, db: Session = Depends(get_db)):
     num_queries = get_num_queries(queries)
     row_ids = [randint(1, 10000) for _ in range(num_queries)]
     worlds = []
@@ -164,6 +164,19 @@ async def database_updates(queries = None):
             await statement.fetchval(row_id)
         await connection.executemany(WRITE_ROW_SQL, updates)
 
+    return UJSONResponse(worlds)
+
+
+@app.get('/updatesorm')
+def database_updates_orm(queries = None, db: Session = Depends(get_db)):
+    num_queries = get_num_queries(queries)
+    updates = [(randint(1, 10000), randint(1, 10000)) for _ in range(num_queries)]
+    worlds = []
+    for row_id, number in updates:
+        world = db.query(World).filter(World.id == row_id).one()
+        world.randomnumber = number
+        worlds.append({'id': world.id, 'randomNumber': world.randomnumber})
+    db.commit()
     return UJSONResponse(worlds)
 
 

@@ -15,6 +15,7 @@ import sys
 
 _is_pypy = hasattr(sys, 'pypy_version_info')
 
+
 def get_conn():
     return psycopg2.connect(
         user='benchmarkdbuser',
@@ -121,6 +122,7 @@ def fortunes_orm(db: Session = Depends(get_db)):
 def database_updates_orm(queries = None, db: Session = Depends(get_db)):
     num_queries = get_num_queries(queries)
     updates = [(randint(1, 10000), randint(1, 10000)) for _ in range(num_queries)]
+    updates.sort()
     worlds = []
     for row_id, number in updates:
         world = db.query(World).filter(World.id == row_id).one()

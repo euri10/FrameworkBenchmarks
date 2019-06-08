@@ -93,11 +93,11 @@ def multiple_database_queries_orm(queries=None, db: Session = Depends(get_db)):
     for row_id in row_ids:
         number = db.query(World.randomnumber).filter(World.id == row_id).one()
         worlds.append({'id': row_id, 'randomNumber': number[0]})
-    return worlds
+    return UJSONResponse(worlds)
 
 
 @app.get('/fortunesorm')
-def fortunes(db: Session = Depends(get_db)):
+def fortunes_orm(db: Session = Depends(get_db)):
     fortunes = list(db.query(Fortune).all())
     fortunes.append(Fortune(id=0, message="Additional fortune added at request time."))
     fortunes.sort(key=attrgetter('message'))

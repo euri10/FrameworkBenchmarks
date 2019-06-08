@@ -2,17 +2,42 @@ import asyncio
 import asyncpg
 import os
 import jinja2
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Boolean, Column, Integer, create_engine
+from sqlalchemy.orm import Session, sessionmaker
 from starlette.responses import HTMLResponse, UJSONResponse, PlainTextResponse
+from starlette.requests import Request
+from starlette.responses import Response
 from random import randint
+import sys
 from operator import itemgetter
-from urllib.parse import parse_qs
+
+_is_pypy = hasattr(sys, 'pypy_version_info')
 
 
 READ_ROW_SQL = 'SELECT "randomnumber" FROM "world" WHERE id = $1'
 WRITE_ROW_SQL = 'UPDATE "world" SET "randomnumber"=$1 WHERE id=$2'
 ADDITIONAL_ROW = [0, 'Additional fortune added at request time.']
 
+# ============ ORM stuff =====================
+
+engine = create_engine('postgresql://benchmarkdbuser:benchmarkdbpass@tfb-database:5432/hello_world')
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+db_session = SessionLocal()
+
+
+class World(Base):
+    __tablename__ = "world"
+    id = Column(Integer, primary_key=True)
+    randomnumber = Column(Integer)
+
+
+def get_db(request: Request):
+    return request.state.db
+
+# ============================================
 
 
 async def setup_database():
@@ -56,6 +81,17 @@ loop.run_until_complete(setup_database())
 app = FastAPI()
 
 
+@app.middleware("http")
+async def db_session_middleware(request: Request, call_next):
+    response = Response("Internal server error", status_code=500)
+    try:
+        request.state.db = SessionLocal()
+        response = await call_next(request)
+    finally:
+        request.state.db.close()
+    return response
+
+
 @app.get('/json')
 async def json_serialization():
     return UJSONResponse({'message': 'Hello, world!'})
@@ -69,6 +105,13 @@ async def single_database_query():
         number = await connection.fetchval(READ_ROW_SQL, row_id)
 
     return UJSONResponse({'id': row_id, 'randomNumber': number})
+
+
+@app.get('/dborm')
+def single_database_query_orm(db: Session = Depends(get_db)):
+    wid = randint(1, 10000)
+    worlds = db.query(World.randomnumber).filter(World.id == wid).first()
+    return worlds
 
 
 @app.get('/queries')

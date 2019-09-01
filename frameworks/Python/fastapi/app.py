@@ -47,6 +47,7 @@ def get_num_queries(queries):
         return 500
     return query_count
 
+
 sort_fortunes_key = itemgetter(1)
 template = load_fortunes_template()
 

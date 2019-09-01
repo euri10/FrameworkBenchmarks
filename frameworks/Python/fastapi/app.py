@@ -1,4 +1,3 @@
-import asyncio
 import asyncpg
 import os
 import jinja2
@@ -26,6 +25,7 @@ async def setup_database():
         host='tfb-database',
         port=5432
     )
+    return connection_pool
 
 
 def load_fortunes_template():
@@ -47,15 +47,15 @@ def get_num_queries(queries):
         return 500
     return query_count
 
-
-connection_pool = None
 sort_fortunes_key = itemgetter(1)
 template = load_fortunes_template()
-loop = asyncio.get_event_loop()
-loop.run_until_complete(setup_database())
-
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+async def startup():
+    connection_pool = await setup_database()
 
 
 @app.get('/json')
@@ -69,13 +69,11 @@ async def single_database_query():
 
     async with connection_pool.acquire() as connection:
         number = await connection.fetchval(READ_ROW_SQL, row_id)
-
     return UJSONResponse({'id': row_id, 'randomNumber': number})
 
 
 @app.get('/queries')
 async def multiple_database_queries(queries = None):
-
     num_queries = get_num_queries(queries)
     row_ids = [randint(1, 10000) for _ in range(num_queries)]
     worlds = []

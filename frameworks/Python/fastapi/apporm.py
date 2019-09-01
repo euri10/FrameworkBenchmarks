@@ -1,32 +1,33 @@
 import os
-import jinja2
-from fastapi import FastAPI, Depends
+import sys
 from operator import attrgetter
+from random import randint
+
+import jinja2
 import psycopg2
-from sqlalchemy.ext.declarative import declarative_base
+from fastapi import Depends, FastAPI
 from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
-from starlette.responses import HTMLResponse, UJSONResponse, PlainTextResponse
 from starlette.requests import Request
-from starlette.responses import Response
-from random import randint
-import sys
+from starlette.responses import HTMLResponse, PlainTextResponse, Response, UJSONResponse
 
-_is_pypy = hasattr(sys, 'pypy_version_info')
+_is_pypy = hasattr(sys, "pypy_version_info")
 
 
 def get_conn():
     return psycopg2.connect(
-        user='benchmarkdbuser',
-        password='benchmarkdbpass',
-        host='tfb-database',
-        port='5432',
-        database='hello_world')
+        user="benchmarkdbuser",
+        password="benchmarkdbpass",
+        host="tfb-database",
+        port="5432",
+        database="hello_world",
+    )
 
 
 conn_pool = QueuePool(get_conn, pool_size=100, max_overflow=25, echo=False)
-engine = create_engine('postgresql://', pool=conn_pool)
+engine = create_engine("postgresql://", pool=conn_pool)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 db_session = SessionLocal()
@@ -49,8 +50,8 @@ def get_db(request: Request):
 
 
 def load_fortunes_template():
-    path = os.path.join('templates', 'fortune.html')
-    with open(path, 'r') as template_file:
+    path = os.path.join("templates", "fortune.html")
+    with open(path, "r") as template_file:
         template_text = template_file.read()
         return jinja2.Template(template_text)
 
@@ -85,41 +86,41 @@ async def db_session_middleware(request: Request, call_next):
     return response
 
 
-@app.get('/json')
+@app.get("/json")
 async def json_serialization():
-    return UJSONResponse({'message': 'Hello, world!'})
+    return UJSONResponse({"message": "Hello, world!"})
 
 
-@app.get('/dborm')
+@app.get("/dborm")
 def single_database_query_orm(db: Session = Depends(get_db)):
     row_id = randint(1, 10000)
     number = db.query(World.randomnumber).filter(World.id == row_id).one()
-    return UJSONResponse({'id': row_id, 'randomNumber': number[0]})
+    return UJSONResponse({"id": row_id, "randomNumber": number[0]})
 
 
-@app.get('/queriesorm')
+@app.get("/queriesorm")
 def multiple_database_queries_orm(queries=None, db: Session = Depends(get_db)):
     num_queries = get_num_queries(queries)
     row_ids = [randint(1, 10000) for _ in range(num_queries)]
     worlds = []
     for row_id in row_ids:
         number = db.query(World.randomnumber).filter(World.id == row_id).one()
-        worlds.append({'id': row_id, 'randomNumber': number[0]})
+        worlds.append({"id": row_id, "randomNumber": number[0]})
     return UJSONResponse(worlds)
 
 
-@app.get('/fortunesorm')
+@app.get("/fortunesorm")
 def fortunes_orm(db: Session = Depends(get_db)):
     fortunes = list(db.query(Fortune).all())
     fortunes.append(Fortune(id=0, message="Additional fortune added at request time."))
-    fortunes.sort(key=attrgetter('message'))
+    fortunes.sort(key=attrgetter("message"))
     fortunes = [(fortune.id, fortune.message) for fortune in fortunes]
     content = template.render(fortunes=fortunes)
     return HTMLResponse(content)
 
 
-@app.get('/updatesorm')
-def database_updates_orm(queries = None, db: Session = Depends(get_db)):
+@app.get("/updatesorm")
+def database_updates_orm(queries=None, db: Session = Depends(get_db)):
     num_queries = get_num_queries(queries)
     updates = [(randint(1, 10000), randint(1, 10000)) for _ in range(num_queries)]
     updates.sort()
@@ -127,11 +128,11 @@ def database_updates_orm(queries = None, db: Session = Depends(get_db)):
     for row_id, number in updates:
         world = db.query(World).filter(World.id == row_id).one()
         world.randomnumber = number
-        worlds.append({'id': world.id, 'randomNumber': world.randomnumber})
+        worlds.append({"id": world.id, "randomNumber": world.randomnumber})
     db.commit()
     return UJSONResponse(worlds)
 
 
-@app.get('/plaintext')
+@app.get("/plaintext")
 async def plaintext():
-    return PlainTextResponse(b'Hello, world!')
+    return PlainTextResponse(b"Hello, world!")
